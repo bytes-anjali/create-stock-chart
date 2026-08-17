@@ -23,9 +23,17 @@ def _fake_snapshot():
     )
 
 
-def test_root_lists_endpoints():
+def test_root_serves_the_html_tool_page():
     client = TestClient(app)
     response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "<form" in response.text
+
+
+def test_health_lists_endpoints():
+    client = TestClient(app)
+    response = client.get("/health")
     assert response.status_code == 200
     assert "png" in response.json()["usage"]
 

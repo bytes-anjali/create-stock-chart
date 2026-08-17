@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stock Chart Generator</title>
+<style>
+  :root {
+    --outer-bg: #E9F5EF;
+    --card-bg: #FFFFFF;
+    --card-border: #E7EEEA;
+    --text-dark: #14161A;
+    --text-muted: #6B7280;
+    --accent: #1DA57A;
+    --accent-dark: #158a65;
+    --danger: #E24C4B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--outer-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-dark);
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 640px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 4px 24px rgba(20, 22, 26, 0.06);
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 24px;
+  }
+  p.subtitle {
+    margin: 0 0 24px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  form {
+    display: flex;
+    gap: 10px;
+  }
+  input[type="text"] {
+    flex: 1;
+    padding: 14px 16px;
+    font-size: 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    outline: none;
+    background: #FAFCFB;
+  }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+  button {
+    padding: 14px 22px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: var(--accent-dark); }
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .examples {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .examples button.chip {
+    background: #F1F7F4;
+    color: var(--text-dark);
+    border: 1px solid var(--card-border);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 0 6px 6px 0;
+  }
+  .examples button.chip:hover { background: #E7F1EC; }
+  .status {
+    margin-top: 20px;
+    font-size: 14px;
+    min-height: 20px;
+  }
+  .status.error { color: var(--danger); }
+  .status.loading { color: var(--text-muted); }
+  .output {
+    margin-top: 20px;
+  }
+  video {
+    width: 100%;
+    border-radius: 16px;
+    display: block;
+    background: var(--outer-bg);
+  }
+  .actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 16px;
+  }
+  .actions a {
+    font-size: 13px;
+    color: var(--accent-dark);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--card-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Stock Chart Generator</h1>
+    <p class="subtitle">Enter a Yahoo Finance ticker to generate a video that traces today's price from open to the last available price. Green if the day ended up, red if it ended down.</p>
+    <form id="form">
+      <input id="ticker" type="text" placeholder="e.g. RELIANCE.NS, TCS.NS, ^NSEI, AAPL" autocomplete="off" autofocus />
+      <button id="submit" type="submit">Generate</button>
+    </form>
+    <div class="examples">
+      Try:
+      <button type="button" class="chip" data-ticker="RELIANCE.NS">RELIANCE.NS</button>
+      <button type="button" class="chip" data-ticker="TCS.NS">TCS.NS</button>
+      <button type="button" class="chip" data-ticker="^NSEI">^NSEI</button>
+      <button type="button" class="chip" data-ticker="AAPL">AAPL</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="output" class="output" hidden>
+      <video id="video" controls autoplay loop></video>
+      <div class="actions">
+        <a id="download-video" download>Download video</a>
+        <a id="download-png" download>Download static image</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const form = document.getElementById('form');
+  const tickerInput = document.getElementById('ticker');
+  const submitBtn = document.getElementById('submit');
+  const statusEl = document.getElementById('status');
+  const output = document.getElementById('output');
+  const video = document.getElementById('video');
+  const downloadVideo = document.getElementById('download-video');
+  const downloadPng = document.getElementById('download-png');
+
+  let currentVideoUrl = null;
+
+  function setStatus(message, kind) {
+    statusEl.textContent = message || '';
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  async function generate(ticker) {
+    ticker = ticker.trim();
+    if (!ticker) return;
+
+    submitBtn.disabled = true;
+    output.hidden = true;
+    setStatus('Generating chart for ' + ticker + ' — this can take a few seconds…', 'loading');
+    statusEl.innerHTML = '<span class="spinner"></span>' + statusEl.textContent;
+
+    try {
+      const res = await fetch('/chart/' + encodeURIComponent(ticker) + '/video');
+      if (!res.ok) {
+        let detail = 'Request failed (' + res.status + ')';
+        try {
+          const body = await res.json();
+          if (body.detail) detail = body.detail;
+        } catch (_) {}
+        throw new Error(detail);
+      }
+      const blob = await res.blob();
+      if (currentVideoUrl) URL.revokeObjectURL(currentVideoUrl);
+      currentVideoUrl = URL.createObjectURL(blob);
+      video.src = currentVideoUrl;
+      downloadVideo.href = currentVideoUrl;
+      downloadVideo.download = ticker + '.mp4';
+      downloadPng.href = '/chart/' + encodeURIComponent(ticker);
+      downloadPng.download = ticker + '.png';
+      output.hidden = false;
+      setStatus('');
+    } catch (err) {
+      setStatus(err.message, 'error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    generate(tickerInput.value);
+  });
+
+  document.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      tickerInput.value = chip.dataset.ticker;
+      generate(chip.dataset.ticker);
+    });
+  });
+</script>
+</body>
+</html>

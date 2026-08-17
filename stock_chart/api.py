@@ -6,6 +6,7 @@ Deployed on Railway via the repo-root Procfile.
 
 import os
 import tempfile
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -18,9 +19,16 @@ from .video import render_video
 
 app = FastAPI(title="Stock Chart Generator")
 
+_STATIC_DIR = Path(__file__).parent / "static"
+
 
 @app.get("/")
 def root():
+    return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
+
+
+@app.get("/health")
+def health():
     return {
         "status": "ok",
         "usage": {
