@@ -10,18 +10,36 @@ Ticker → Yahoo → Price Data → Extract Pattern → Stylized Chart → Patte
 
 ```bash
 pip install -r requirements.txt
-python -m stock_chart.cli RELIANCE.NS
+python -m stock_chart.cli RELIANCE.NS                # static PNG card
 python -m stock_chart.cli ^NSEI -o nifty.png
+python -m stock_chart.cli TCS.NS --video             # MP4 tracing open -> last price
 ```
 
 Or from Python:
 
 ```python
-from stock_chart import generate
+from stock_chart import generate, generate_video
 
 snapshot = generate("TCS.NS", "tcs.png")
+generate_video("TCS.NS", "tcs.mp4")
 print(snapshot.latest_price, snapshot.change_pct)
 ```
+
+### HTTP API
+
+```bash
+uvicorn stock_chart.api:app --reload
+curl http://localhost:8000/chart/RELIANCE.NS -o reliance.png
+curl http://localhost:8000/chart/RELIANCE.NS/video -o reliance.mp4
+```
+
+### Deploying on Railway
+
+The repo root has a `Procfile` (`web: uvicorn stock_chart.api:app --host 0.0.0.0
+--port $PORT`) and a `requirements.txt` that includes `stock_chart/requirements.txt`
+plus `fastapi`/`uvicorn`. Railway's Nixpacks builder picks both up automatically —
+just point a new Railway service at this repo/branch and deploy. No Dockerfile or
+system `ffmpeg` install is needed: `imageio-ffmpeg` bundles a static ffmpeg binary.
 
 ## How it works
 
@@ -43,6 +61,14 @@ print(snapshot.latest_price, snapshot.change_pct)
    labels, gradient area fill, and a haloed dot at the latest price. Color
    (teal-green vs red) follows the sign of the overall change, matching the
    reference design.
+6. **`video.py`** — animates the same card: the line/fill/dot grow from the
+   day's open to the last available price, then hold on the finished chart.
+   The axis range and header numbers are fixed to their final values before
+   the first frame is drawn, so the animation can only ever reveal more of
+   the real, already-validated line — it can't imply a price or extremum
+   that isn't in the data.
+7. **`api.py`** — a FastAPI app exposing `GET /chart/{ticker}` (PNG) and
+   `GET /chart/{ticker}/video` (MP4), for deploying as an HTTP service.
 
 ## Notes
 

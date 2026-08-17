@@ -32,15 +32,15 @@ def render_card(snapshot, styled_prices, times, out_path, dpi: int = 100) -> Non
     fig = plt.figure(figsize=(FIG_W, FIG_H), dpi=dpi)
     fig.patch.set_facecolor(OUTER_BG)
 
-    _draw_card_background(fig)
-    _draw_header(fig, snapshot, accent, arrow)
+    draw_card_background(fig)
+    draw_header(fig, snapshot, accent, arrow)
     _draw_chart(fig, styled_prices, times, accent)
 
     fig.savefig(out_path, dpi=dpi, facecolor=fig.get_facecolor())
     plt.close(fig)
 
 
-def _draw_card_background(fig) -> None:
+def draw_card_background(fig) -> None:
     margin = 0.03
     card = FancyBboxPatch(
         (margin, margin),
@@ -56,7 +56,7 @@ def _draw_card_background(fig) -> None:
     fig.add_artist(card)
 
 
-def _draw_header(fig, snapshot, accent, arrow) -> None:
+def draw_header(fig, snapshot, accent, arrow) -> None:
     fig.text(0.085, 0.905, snapshot.name, fontsize=27, fontweight="bold", color=TEXT_DARK, va="top")
 
     price_str = f"{snapshot.currency_symbol}{snapshot.latest_price:,.2f}"
@@ -72,7 +72,11 @@ def _draw_header(fig, snapshot, accent, arrow) -> None:
     fig.text(price_bbox.x1 + 0.018, 0.818, change_str, fontsize=21, fontweight="bold", color=accent, va="top")
 
 
-def _draw_chart(fig, styled_prices, times, accent) -> None:
+def prepare_axis(fig, styled_prices, times):
+    """Add the chart axes with gridlines/tick labels fixed to the FULL series' range,
+    so a partial (in-progress animation) reveal never rescales the axis mid-video.
+    Returns (ax, x, y_min, y_max) for callers to plot the line/fill/dot into.
+    """
     ax = fig.add_axes((0.075, 0.10, 0.80, 0.56))
     ax.set_facecolor(CARD_BG)
     for spine in ax.spines.values():
@@ -81,9 +85,6 @@ def _draw_chart(fig, styled_prices, times, accent) -> None:
     x = np.arange(len(styled_prices))
     y_min, y_max = float(styled_prices.min()), float(styled_prices.max())
     y_span = max(y_max - y_min, 1e-9)
-
-    ax.plot(x, styled_prices, color=accent, linewidth=2.6, solid_capstyle="round", zorder=3)
-    _fill_gradient_area(ax, x, styled_prices, y_min, accent)
 
     y_ticks = np.linspace(y_min, y_max, 4)
     ax.set_yticks(y_ticks)
@@ -100,6 +101,13 @@ def _draw_chart(fig, styled_prices, times, accent) -> None:
     ax.tick_params(axis="x", length=0)
     ax.set_xlim(0, len(styled_prices) - 1)
 
+    return ax, x, y_min, y_max
+
+
+def _draw_chart(fig, styled_prices, times, accent) -> None:
+    ax, x, y_min, _y_max = prepare_axis(fig, styled_prices, times)
+    ax.plot(x, styled_prices, color=accent, linewidth=2.6, solid_capstyle="round", zorder=3)
+    _fill_gradient_area(ax, x, styled_prices, y_min, accent)
     _draw_latest_dot(ax, x[-1], styled_prices[-1], accent)
 
 

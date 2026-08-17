@@ -6,6 +6,7 @@ from .fetch import TickerSnapshot, fetch_intraday
 from .pattern import smooth
 from .render import render_card
 from .validate import validate_pattern
+from .video import render_video
 
 # Smoothing windows to try, most-stylized first, falling back to less smoothing
 # whenever a window distorts a peak/trough badly enough to fail validation.
@@ -33,4 +34,15 @@ def generate(ticker: str, out_path: str) -> TickerSnapshot:
     snapshot = fetch_intraday(ticker)
     styled_prices, _window, _rejected = stylize_and_validate(snapshot.prices)
     render_card(snapshot, styled_prices, snapshot.times, out_path)
+    return snapshot
+
+
+def generate_video(ticker: str, out_path: str, **video_kwargs) -> TickerSnapshot:
+    """Run the full pipeline for `ticker` and write an MP4 that traces the day's line
+    from open to the last available price to `out_path`. Extra keyword args (fps,
+    reveal_seconds, hold_seconds) are forwarded to render_video.
+    """
+    snapshot = fetch_intraday(ticker)
+    styled_prices, _window, _rejected = stylize_and_validate(snapshot.prices)
+    render_video(snapshot, styled_prices, snapshot.times, out_path, **video_kwargs)
     return snapshot
