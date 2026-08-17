@@ -9,7 +9,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import imageio.v2 as imageio
 
-from .render import FIG_H, FIG_W, NEGATIVE_COLOR, OUTER_BG, POSITIVE_COLOR, draw_card_background, draw_header, prepare_axis
+from .render import CARD_BG, FIG_H, FIG_W, NEGATIVE_COLOR, POSITIVE_COLOR, draw_card_background, draw_header, prepare_axis
 
 DEFAULT_FPS = 20
 DEFAULT_REVEAL_SECONDS = 2.5
@@ -41,7 +41,7 @@ def render_video(
     arrow = "▲" if snapshot.is_positive else "▼"
 
     fig = plt.figure(figsize=(FIG_W, FIG_H), dpi=dpi)
-    fig.patch.set_facecolor(OUTER_BG)
+    fig.patch.set_facecolor(CARD_BG)
     draw_card_background(fig)
     draw_header(fig, snapshot, accent, arrow)
     ax, x, y_min, _y_max = prepare_axis(fig, styled_prices, times)
