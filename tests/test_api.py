@@ -56,6 +56,15 @@ def test_chart_video_endpoint_returns_mp4(mock_fetch):
     assert len(response.content) > 1000
 
 
+@patch("stock_chart.api.fetch_intraday", return_value=_fake_snapshot())
+def test_chart_video_v2_endpoint_returns_mp4(mock_fetch):
+    client = TestClient(app)
+    response = client.get("/v2/chart/TEST.NS/video")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "video/mp4"
+    assert len(response.content) > 1000
+
+
 @patch("stock_chart.api.fetch_intraday", side_effect=ValueError("No intraday data returned by Yahoo Finance for ticker 'BOGUS'"))
 def test_chart_png_endpoint_reports_fetch_failure_as_502(mock_fetch):
     client = TestClient(app)

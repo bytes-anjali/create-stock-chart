@@ -16,6 +16,7 @@ from .fetch import fetch_intraday
 from .generate import stylize_and_validate
 from .render import render_card
 from .video import render_video
+from .video_v2 import render_video as render_video_v2
 
 app = FastAPI(title="Stock Chart Generator")
 
@@ -34,6 +35,7 @@ def health():
         "usage": {
             "png": "/chart/{ticker}",
             "video": "/chart/{ticker}/video",
+            "video_v2": "/v2/chart/{ticker}/video",
         },
     }
 
@@ -62,6 +64,20 @@ def chart_video(ticker: str):
         path,
         media_type="video/mp4",
         filename=f"{ticker}.mp4",
+        background=BackgroundTask(os.remove, path),
+    )
+
+
+@app.get("/v2/chart/{ticker}/video")
+def chart_video_v2(ticker: str):
+    snapshot, styled_prices = _fetch_and_stylize(ticker)
+    fd, path = tempfile.mkstemp(suffix=".mp4")
+    os.close(fd)
+    render_video_v2(snapshot, styled_prices, snapshot.times, ticker, path)
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        filename=f"{ticker}_v2.mp4",
         background=BackgroundTask(os.remove, path),
     )
 

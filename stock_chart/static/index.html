@@ -81,7 +81,7 @@
     font-size: 13px;
     color: var(--text-muted);
   }
-  .examples button.chip {
+  .examples button.chip, .examples button.chip-v2 {
     background: #F1F7F4;
     color: var(--text-dark);
     border: 1px solid var(--card-border);
@@ -91,7 +91,7 @@
     font-weight: 500;
     margin: 0 6px 6px 0;
   }
-  .examples button.chip:hover { background: #E7F1EC; }
+  .examples button.chip:hover, .examples button.chip-v2:hover { background: #E7F1EC; }
   .status {
     margin-top: 20px;
     font-size: 14px;
@@ -131,29 +131,81 @@
     margin-right: 8px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .tabs button {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: #F1F7F4;
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .tabs button.active {
+    color: white;
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>Stock Chart Generator</h1>
-    <p class="subtitle">Enter a Yahoo Finance ticker to generate a video that traces today's price from open to the last available price.</p>
-    <form id="form">
-      <input id="ticker" type="text" placeholder="e.g. RELIANCE.NS, TCS.NS, ^NSEI, AAPL" autocomplete="off" autofocus />
-      <button id="submit" type="submit">Generate</button>
-    </form>
-    <div class="examples">
-      Try:
-      <button type="button" class="chip" data-ticker="RELIANCE.NS">RELIANCE.NS</button>
-      <button type="button" class="chip" data-ticker="TCS.NS">TCS.NS</button>
-      <button type="button" class="chip" data-ticker="^NSEI">^NSEI</button>
-      <button type="button" class="chip" data-ticker="AAPL">AAPL</button>
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="v1">V1</button>
+      <button type="button" class="tab-btn" data-tab="v2">V2</button>
     </div>
-    <div id="status" class="status"></div>
-    <div id="output" class="output" hidden>
-      <video id="video" controls autoplay loop></video>
-      <div class="actions">
-        <a id="download-video" download>Download video</a>
-        <a id="download-png" download>Download static image</a>
+
+    <div id="tab-v1" class="tab-panel active">
+      <h1>Stock Chart Generator</h1>
+      <p class="subtitle">Enter a Yahoo Finance ticker to generate a video that traces today's price from open to the last available price.</p>
+      <form id="form">
+        <input id="ticker" type="text" placeholder="e.g. RELIANCE.NS, TCS.NS, ^NSEI, AAPL" autocomplete="off" autofocus />
+        <button id="submit" type="submit">Generate</button>
+      </form>
+      <div class="examples">
+        Try:
+        <button type="button" class="chip" data-ticker="RELIANCE.NS">RELIANCE.NS</button>
+        <button type="button" class="chip" data-ticker="TCS.NS">TCS.NS</button>
+        <button type="button" class="chip" data-ticker="^NSEI">^NSEI</button>
+        <button type="button" class="chip" data-ticker="AAPL">AAPL</button>
+      </div>
+      <div id="status" class="status"></div>
+      <div id="output" class="output" hidden>
+        <video id="video" controls autoplay loop></video>
+        <div class="actions">
+          <a id="download-video" download>Download video</a>
+          <a id="download-png" download>Download static image</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-v2" class="tab-panel">
+      <h1>Stock Chart Generator — V2</h1>
+      <p class="subtitle">Same data, laid out on the exchange's full market-hours timeline. The line stops at the latest available price and blinks there to mark where generation ended.</p>
+      <form id="form-v2">
+        <input id="ticker-v2" type="text" placeholder="e.g. RELIANCE.NS, TCS.NS, ^NSEI, AAPL" autocomplete="off" />
+        <button id="submit-v2" type="submit">Generate</button>
+      </form>
+      <div class="examples">
+        Try:
+        <button type="button" class="chip-v2" data-ticker="RELIANCE.NS">RELIANCE.NS</button>
+        <button type="button" class="chip-v2" data-ticker="TCS.NS">TCS.NS</button>
+        <button type="button" class="chip-v2" data-ticker="^NSEI">^NSEI</button>
+        <button type="button" class="chip-v2" data-ticker="AAPL">AAPL</button>
+      </div>
+      <div id="status-v2" class="status"></div>
+      <div id="output-v2" class="output" hidden>
+        <video id="video-v2" controls autoplay loop></video>
+        <div class="actions">
+          <a id="download-video-v2" download>Download video</a>
+        </div>
       </div>
     </div>
   </div>
@@ -220,6 +272,80 @@
     chip.addEventListener('click', () => {
       tickerInput.value = chip.dataset.ticker;
       generate(chip.dataset.ticker);
+    });
+  });
+
+  // --- tabs ---------------------------------------------------------------
+
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // --- V2: same flow, market-hours timeline + blinking end-of-data cursor -
+
+  const formV2 = document.getElementById('form-v2');
+  const tickerInputV2 = document.getElementById('ticker-v2');
+  const submitBtnV2 = document.getElementById('submit-v2');
+  const statusElV2 = document.getElementById('status-v2');
+  const outputV2 = document.getElementById('output-v2');
+  const videoV2 = document.getElementById('video-v2');
+  const downloadVideoV2 = document.getElementById('download-video-v2');
+
+  let currentVideoUrlV2 = null;
+
+  function setStatusV2(message, kind) {
+    statusElV2.textContent = message || '';
+    statusElV2.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  async function generateV2(ticker) {
+    ticker = ticker.trim();
+    if (!ticker) return;
+
+    submitBtnV2.disabled = true;
+    outputV2.hidden = true;
+    setStatusV2('Generating chart for ' + ticker + ' — this can take a few seconds…', 'loading');
+    statusElV2.innerHTML = '<span class="spinner"></span>' + statusElV2.textContent;
+
+    try {
+      const res = await fetch('/v2/chart/' + encodeURIComponent(ticker) + '/video');
+      if (!res.ok) {
+        let detail = 'Request failed (' + res.status + ')';
+        try {
+          const body = await res.json();
+          if (body.detail) detail = body.detail;
+        } catch (_) {}
+        throw new Error(detail);
+      }
+      const blob = await res.blob();
+      if (currentVideoUrlV2) URL.revokeObjectURL(currentVideoUrlV2);
+      currentVideoUrlV2 = URL.createObjectURL(blob);
+      videoV2.src = currentVideoUrlV2;
+      downloadVideoV2.href = currentVideoUrlV2;
+      downloadVideoV2.download = ticker + '_v2.mp4';
+      outputV2.hidden = false;
+      setStatusV2('');
+    } catch (err) {
+      setStatusV2(err.message, 'error');
+    } finally {
+      submitBtnV2.disabled = false;
+    }
+  }
+
+  formV2.addEventListener('submit', (e) => {
+    e.preventDefault();
+    generateV2(tickerInputV2.value);
+  });
+
+  document.querySelectorAll('.chip-v2').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      tickerInputV2.value = chip.dataset.ticker;
+      generateV2(chip.dataset.ticker);
     });
   });
 </script>
